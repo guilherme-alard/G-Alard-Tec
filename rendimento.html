@@ -162,7 +162,7 @@
       <div id="chartWrap" style="display:flex;justify-content:center"></div>
       <div class="legend" id="legend"></div>
       <div class="total-value"><div class="n" id="totalValue">R$ 0,00</div><div class="l">Total a pagar</div></div>
-      <div style="display:flex;gap:10px;margin-top:18px">
+      <div style="display:none;gap:10px;margin-top:18px" id="exportButtons">
         <button class="btn" id="exportCsv" style="flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text)">Exportar CSV</button>
         <button class="btn" id="exportPdf" style="flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text)">Imprimir / PDF</button>
       </div>
@@ -228,6 +228,7 @@
       document.getElementById('formSection').style.display = 'none';
       document.getElementById('priceSection').style.display = 'block';
       document.getElementById('techSelectSection').style.display = 'block';
+      document.getElementById('exportButtons').style.display = 'flex';
       renderPriceInputs();
       const { data: techs } = await sb.from('profiles').select('*').eq('role', 'tecnico');
       (techs||[]).forEach(t => techsMap[t.id] = t.name);
