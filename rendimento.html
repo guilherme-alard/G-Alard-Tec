@@ -479,9 +479,11 @@
     document.body.classList.add('printing-report');
     const prevTitle = document.title;
     document.title = fileNameBase();
-    window.print();
-    document.title = prevTitle;
-    setTimeout(() => document.body.classList.remove('printing-report'), 500);
+    setTimeout(() => {
+      window.print();
+      document.title = prevTitle;
+      setTimeout(() => document.body.classList.remove('printing-report'), 500);
+    }, 150);
   });
 
   sb.auth.getSession().then(({ data }) => {
