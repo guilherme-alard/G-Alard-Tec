@@ -180,6 +180,7 @@
   let selectedType = 'camera';
   let monthOffset = 0;
   let viewingTechId = null;
+  let techsMap = {};
 
   function showMsg(el, text, cls) { el.textContent = text; el.className = 'msg ' + (cls||'error'); }
   function fmtBRL(n) { return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
@@ -217,9 +218,11 @@
       document.getElementById('techSelectSection').style.display = 'block';
       renderPriceInputs();
       const { data: techs } = await sb.from('profiles').select('*').eq('role', 'tecnico');
+      (techs||[]).forEach(t => techsMap[t.id] = t.name);
       const sel = document.getElementById('techSelect');
-      sel.innerHTML = (techs||[]).map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-      if (techs && techs.length) viewingTechId = techs[0].id;
+      sel.innerHTML = '<option value="all">— Todos os técnicos —</option>' + (techs||[]).map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+      sel.value = 'all';
+      viewingTechId = 'all';
       sel.addEventListener('change', () => { viewingTechId = sel.value; refreshAll(); });
     }
 
@@ -261,11 +264,13 @@
 
   async function refreshAll() {
     const { start, end } = getMonthRange();
-    const { data, error } = await sb.from('commission_entries').select('*')
-      .eq('technician_id', viewingTechId)
+    let query = sb.from('commission_entries').select('*')
       .gte('created_at', start.toISOString())
       .lt('created_at', end.toISOString())
       .order('created_at', { ascending: false });
+    if (viewingTechId !== 'all') query = query.eq('technician_id', viewingTechId);
+
+    const { data, error } = await query;
 
     const listEl = document.getElementById('entriesList');
     if (error) { listEl.innerHTML = `<div class="empty">Erro: ${error.message}</div>`; return; }
@@ -279,6 +284,7 @@
           <div>
             <span class="entry-tag" style="background:${TYPES[e.type].color}22;color:${TYPES[e.type].color}">${TYPES[e.type].label}</span>
             ${e.client_name || ''} <span style="color:var(--text-dim)">× ${e.quantity}</span>
+            ${viewingTechId === 'all' ? `<span style="color:var(--text-dim);font-size:11.5px"> · ${techsMap[e.technician_id] || '—'}</span>` : ''}
           </div>
           ${(e.technician_id === currentProfile.id || currentProfile.role === 'admin') ? `<button class="entry-del" data-id="${e.id}">×</button>` : ''}
         </div>
