@@ -77,6 +77,11 @@
   .total-value .l{font-size:11px;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;font-family:'IBM Plex Mono',monospace}
 
   .tech-select-row{margin-bottom:14px}
+
+  @media print {
+    body > *:not(#printArea) { display: none !important; }
+    #printArea { display: block !important; }
+  }
 </style>
 </head>
 <body>
@@ -157,8 +162,14 @@
       <div id="chartWrap" style="display:flex;justify-content:center"></div>
       <div class="legend" id="legend"></div>
       <div class="total-value"><div class="n" id="totalValue">R$ 0,00</div><div class="l">Total a pagar</div></div>
+      <div style="display:flex;gap:10px;margin-top:18px">
+        <button class="btn" id="exportCsv" style="flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text)">Exportar CSV</button>
+        <button class="btn" id="exportPdf" style="flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text)">Imprimir / PDF</button>
+      </div>
     </div>
   </main>
+
+  <div id="printArea" style="display:none"></div>
 </div>
 
 <script>
@@ -181,6 +192,7 @@
   let monthOffset = 0;
   let viewingTechId = null;
   let techsMap = {};
+  let lastEntries = [];
 
   function showMsg(el, text, cls) { el.textContent = text; el.className = 'msg ' + (cls||'error'); }
   function fmtBRL(n) { return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
@@ -297,6 +309,7 @@
     }
 
     renderSummary(entries);
+    lastEntries = entries;
   }
 
   function renderSummary(entries) {
@@ -373,6 +386,83 @@
     }
     showMsg(priceMsg, 'Valores salvos!', 'ok');
     refreshAll();
+  });
+
+  function reportLabel() {
+    const who = viewingTechId === 'all' ? 'Todos os técnicos' : (techsMap[viewingTechId] || currentProfile.name);
+    return `${who} — ${getMonthRange().label}`;
+  }
+
+  document.getElementById('exportCsv').addEventListener('click', () => {
+    const rows = [['Data', 'Técnico', 'Cliente', 'Tipo', 'Quantidade', 'Valor unitário', 'Valor total']];
+    let grandTotal = 0;
+    lastEntries.forEach(e => {
+      const unit = prices[e.type] || 0;
+      const total = unit * e.quantity;
+      grandTotal += total;
+      rows.push([
+        new Date(e.created_at).toLocaleDateString('pt-BR'),
+        techsMap[e.technician_id] || currentProfile.name,
+        e.client_name || '',
+        TYPES[e.type].label,
+        e.quantity,
+        unit.toFixed(2).replace('.', ','),
+        total.toFixed(2).replace('.', ',')
+      ]);
+    });
+    rows.push([]);
+    rows.push(['', '', '', '', '', 'TOTAL', grandTotal.toFixed(2).replace('.', ',')]);
+
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';')).join('\r\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rendimento-${reportLabel().replace(/[^a-zA-Z0-9]+/g,'-')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('exportPdf').addEventListener('click', () => {
+    const chartSvg = document.getElementById('chartWrap').innerHTML;
+    const legendHtml = document.getElementById('legend').innerHTML;
+    const totalText = document.getElementById('totalValue').textContent;
+
+    let rowsHtml = lastEntries.map(e => {
+      const unit = prices[e.type] || 0;
+      const total = unit * e.quantity;
+      return `<tr>
+        <td>${new Date(e.created_at).toLocaleDateString('pt-BR')}</td>
+        <td>${techsMap[e.technician_id] || currentProfile.name}</td>
+        <td>${e.client_name || ''}</td>
+        <td>${TYPES[e.type].label}</td>
+        <td style="text-align:center">${e.quantity}</td>
+        <td style="text-align:right">${fmtBRL(unit)}</td>
+        <td style="text-align:right">${fmtBRL(total)}</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('printArea').innerHTML = `
+      <style>
+        body{font-family:Arial,sans-serif;color:#111;padding:20px}
+        h1{font-size:18px;margin:0 0 2px}
+        .sub{color:#666;font-size:12px;margin-bottom:18px}
+        table{width:100%;border-collapse:collapse;font-size:12px;margin-top:16px}
+        th,td{border:1px solid #ccc;padding:6px 8px;text-align:left}
+        th{background:#f2f2f2}
+        .chart-row{display:flex;align-items:center;gap:20px;margin-top:14px}
+        .total{font-size:20px;font-weight:bold;margin-top:16px}
+      </style>
+      <h1>Grupo Alard — Rendimento Técnico</h1>
+      <div class="sub">${reportLabel()}</div>
+      <div class="chart-row">${chartSvg}<div>${legendHtml}</div></div>
+      <div class="total">Total a pagar: ${totalText}</div>
+      <table><thead><tr><th>Data</th><th>Técnico</th><th>Cliente</th><th>Tipo</th><th>Qtd</th><th>Valor unit.</th><th>Total</th></tr></thead>
+      <tbody>${rowsHtml}</tbody></table>
+    `;
+    document.body.classList.add('printing-report');
+    window.print();
+    setTimeout(() => document.body.classList.remove('printing-report'), 500);
   });
 
   sb.auth.getSession().then(({ data }) => {
