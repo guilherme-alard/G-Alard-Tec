@@ -57,6 +57,10 @@
   .entry-meta{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-dim);white-space:nowrap}
   .entry-client{display:inline-block;font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--accent);background:rgba(226,35,26,.1);border:1px solid var(--accent-dim);border-radius:5px;padding:2px 7px;margin-bottom:8px}
   .entry-text{font-size:14.5px;line-height:1.55;white-space:pre-wrap}
+  .entry-photo{margin-top:10px;max-width:100%;border-radius:8px;display:block}
+  .photo-row{display:flex;align-items:center;gap:10px;margin-top:6px}
+  .photo-btn{background:var(--surface);border:1px dashed var(--border);border-radius:8px;padding:9px 14px;color:var(--text-dim);font-size:13px;cursor:pointer;font-family:inherit}
+  .photo-preview{height:44px;border-radius:6px;display:none}
   .fab{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--accent);color:#fff;border:none;border-radius:999px;padding:14px 22px;font-size:15px;font-weight:700;font-family:inherit;max-width:calc(560px - 32px);width:calc(100% - 32px);cursor:pointer}
   .sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10;display:none;align-items:flex-end;justify-content:center}
   .sheet-backdrop.open{display:flex}
@@ -111,6 +115,12 @@
     <input id="client" type="text" placeholder="Ex: Paulo Ferreira">
     <label>Anotação</label>
     <textarea id="text" placeholder="O que aconteceu hoje..."></textarea>
+    <label>Foto (opcional)</label>
+    <div class="photo-row">
+      <button type="button" class="photo-btn" id="photoBtn">Adicionar foto</button>
+      <input type="file" id="photoInput" accept="image/*" style="display:none">
+      <img id="photoPreview" class="photo-preview">
+    </div>
     <div class="msg" id="formMsg"></div>
     <div class="sheet-actions">
       <button class="btn-cancel" id="cancelBtn">Cancelar</button>
@@ -187,6 +197,7 @@
         </div>
         ${e.client_name ? `<span class="entry-client">${highlight(e.client_name, term)}</span>` : ''}
         <div class="entry-text">${highlight(e.text, term)}</div>
+        ${e.photo_url ? `<img class="entry-photo" src="${e.photo_url}" loading="lazy">` : ''}
       </div>
     `).join('');
   }
@@ -202,17 +213,76 @@
     document.getElementById('client').value = '';
     document.getElementById('text').value = '';
     document.getElementById('formMsg').style.display = 'none';
+    pendingPhotoBlob = null;
+    document.getElementById('photoPreview').style.display = 'none';
+    document.getElementById('photoBtn').textContent = 'Adicionar foto';
     backdrop.classList.add('open');
   });
   document.getElementById('cancelBtn').addEventListener('click', () => backdrop.classList.remove('open'));
   backdrop.addEventListener('click', e => { if (e.target === backdrop) backdrop.classList.remove('open'); });
+
+  let pendingPhotoBlob = null;
+  const photoBtn = document.getElementById('photoBtn');
+  const photoInput = document.getElementById('photoInput');
+  const photoPreview = document.getElementById('photoPreview');
+
+  function compressImage(file, maxWidth = 1280, quality = 0.72) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const scale = Math.min(1, maxWidth / img.width);
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Falha ao processar imagem')), 'image/jpeg', quality);
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  photoBtn.addEventListener('click', () => photoInput.click());
+  photoInput.addEventListener('change', async () => {
+    const file = photoInput.files[0];
+    if (!file) return;
+    photoBtn.textContent = 'Processando...';
+    try {
+      pendingPhotoBlob = await compressImage(file);
+      photoPreview.src = URL.createObjectURL(pendingPhotoBlob);
+      photoPreview.style.display = 'block';
+      photoBtn.textContent = `Foto anexada ✓ (${Math.round(pendingPhotoBlob.size/1024)} KB)`;
+    } catch (err) {
+      photoBtn.textContent = 'Adicionar foto';
+      showMsg(document.getElementById('formMsg'), 'Erro ao processar a foto: ' + err.message);
+    }
+  });
 
   document.getElementById('saveBtn').addEventListener('click', async () => {
     const text = document.getElementById('text').value.trim();
     const client_name = document.getElementById('client').value.trim();
     const formMsg = document.getElementById('formMsg');
     if (!text) { showMsg(formMsg, 'Escreva algo na anotação.'); return; }
-    const { error } = await sb.from('diary_entries').insert({ author_id: currentProfile.id, client_name: client_name || null, text });
+
+    const saveBtn = document.getElementById('saveBtn');
+    saveBtn.disabled = true; saveBtn.textContent = 'Salvando...';
+
+    let photo_url = null;
+    if (pendingPhotoBlob) {
+      const fileName = `${currentProfile.id}/${Date.now()}.jpg`;
+      const { error: upErr } = await sb.storage.from('diary-photos').upload(fileName, pendingPhotoBlob, { contentType: 'image/jpeg' });
+      if (upErr) { showMsg(formMsg, 'Erro ao enviar a foto: ' + upErr.message); saveBtn.disabled = false; saveBtn.textContent = 'Salvar'; return; }
+      const { data: urlData } = sb.storage.from('diary-photos').getPublicUrl(fileName);
+      photo_url = urlData.publicUrl;
+    }
+
+    const { error } = await sb.from('diary_entries').insert({ author_id: currentProfile.id, client_name: client_name || null, text, photo_url });
+    saveBtn.disabled = false; saveBtn.textContent = 'Salvar';
     if (error) { showMsg(formMsg, 'Erro ao salvar: ' + error.message); return; }
     backdrop.classList.remove('open');
     document.getElementById('searchInput').value = '';
