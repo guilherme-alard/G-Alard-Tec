@@ -304,18 +304,41 @@
     const title = document.getElementById('pTitle').value.trim();
     const category = document.getElementById('pCat').value;
     const formMsg = document.getElementById('formMsg');
-    const stepTexts = [...stepsContainer.children].map(d => d.querySelector('.step-text').value.trim()).filter(Boolean);
+    const stepBlocks = [...stepsContainer.children].filter(d => d.querySelector('.step-text').value.trim());
     if (!title) { showMsg(formMsg, 'Dê um título ao procedimento.'); return; }
-    if (stepTexts.length === 0) { showMsg(formMsg, 'Adicione pelo menos um passo.'); return; }
+    if (stepBlocks.length === 0) { showMsg(formMsg, 'Adicione pelo menos um passo.'); return; }
+
+    const saveBtn = document.getElementById('saveProc');
+    saveBtn.disabled = true; saveBtn.textContent = 'Salvando...';
 
     const { data: proc, error: procErr } = await sb.from('procedures')
       .insert({ title, category, created_by: currentProfile.id })
       .select().single();
-    if (procErr) { showMsg(formMsg, 'Erro: ' + procErr.message); return; }
+    if (procErr) { showMsg(formMsg, 'Erro: ' + procErr.message); saveBtn.disabled = false; saveBtn.textContent = 'Salvar procedimento'; return; }
 
-    const stepsPayload = stepTexts.map((text, i) => ({ procedure_id: proc.id, step_order: i + 1, text }));
+    const stepsPayload = [];
+    let hadPhotoError = false;
+    for (let i = 0; i < stepBlocks.length; i++) {
+      const div = stepBlocks[i];
+      let photo_url = null;
+      if (div._photoBlob) {
+        const fileName = `${proc.id}/${i + 1}-${Date.now()}.jpg`;
+        const { error: upErr } = await sb.storage.from('wiki-photos').upload(fileName, div._photoBlob, { contentType: 'image/jpeg' });
+        if (upErr) {
+          hadPhotoError = true;
+          showMsg(formMsg, `Procedimento criado, mas a foto do passo ${i+1} falhou: ${upErr.message}`);
+        } else {
+          const { data: urlData } = sb.storage.from('wiki-photos').getPublicUrl(fileName);
+          photo_url = urlData.publicUrl;
+        }
+      }
+      stepsPayload.push({ procedure_id: proc.id, step_order: i + 1, text: div.querySelector('.step-text').value.trim(), photo_url });
+    }
     const { error: stepsErr } = await sb.from('procedure_steps').insert(stepsPayload);
+    saveBtn.disabled = false; saveBtn.textContent = 'Salvar procedimento';
     if (stepsErr) { showMsg(formMsg, 'Procedimento criado, mas erro nos passos: ' + stepsErr.message); return; }
+    loadProcedures();
+    if (hadPhotoError) return;
 
     formOverlay.classList.remove('open');
     loadProcedures();
