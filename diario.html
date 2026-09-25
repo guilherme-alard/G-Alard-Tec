@@ -190,7 +190,7 @@
     if (!data || data.length === 0) { listEl.innerHTML = '<div class="empty">Nenhuma anotação encontrada.</div>'; return; }
 
     listEl.innerHTML = data.map(e => `
-      <div class="entry">
+      <div class="entry" data-id="${e.id}">
         <div class="entry-top">
           <span class="entry-author">${highlight(e.profiles?.name || 'Desconhecido', term)}</span>
           <span class="entry-meta">${fmtDate(e.created_at)}</span>
@@ -198,8 +198,16 @@
         ${e.client_name ? `<span class="entry-client">${highlight(e.client_name, term)}</span>` : ''}
         <div class="entry-text">${highlight(e.text, term)}</div>
         ${e.photo_url ? `<img class="entry-photo" src="${e.photo_url}" loading="lazy">` : ''}
+        ${currentProfile.role === 'admin' ? `<button class="del-entry-btn" data-id="${e.id}" style="margin-top:10px;font-size:12px;color:var(--text-dim);background:none;border:1px dashed var(--border);border-radius:7px;padding:6px 12px;cursor:pointer;font-family:inherit">Excluir</button>` : ''}
       </div>
     `).join('');
+
+    listEl.querySelectorAll('.del-entry-btn').forEach(btn => btn.addEventListener('click', async () => {
+      if (!confirm('Excluir essa anotação? Essa ação não pode ser desfeita.')) return;
+      const { error } = await sb.from('diary_entries').delete().eq('id', btn.dataset.id);
+      if (error) { alert('Erro ao excluir: ' + error.message); return; }
+      loadEntries();
+    }));
   }
 
   let searchTimer;
