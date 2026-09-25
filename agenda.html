@@ -197,6 +197,7 @@
   async function enterApp(userId) {
     const { data: profile, error } = await sb.from('profiles').select('*').eq('id', userId).single();
     if (error || !profile) { showMsg(document.getElementById('loginMsg'), 'Perfil não encontrado.'); return; }
+    if (profile.role === 'tecnico') { window.location.href = 'index.html'; return; }
     currentProfile = profile;
     document.getElementById('whoName').textContent = profile.name;
     document.getElementById('whoDot').style.background = profile.color || '#666';

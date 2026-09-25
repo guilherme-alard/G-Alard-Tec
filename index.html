@@ -46,7 +46,7 @@
     <svg class="card-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 5.5A2.5 2.5 0 0 1 4.5 3H10a2 2 0 0 1 2 2 2 2 0 0 1 2-2h5.5A2.5 2.5 0 0 1 22 5.5v13A1.5 1.5 0 0 1 20.5 20H14a2 2 0 0 0-2 2 2 2 0 0 0-2-2H3.5A1.5 1.5 0 0 1 2 18.5z"/><path d="M12 5v17"/></svg>
     <div><div class="t">Manual de Procedimentos</div><div class="s">Passo a passo pra tirar dúvidas em campo</div></div>
   </a>
-  <a class="card" href="agenda.html" style="--card-color:#e2231a">
+  <a class="card" href="agenda.html" id="agendaCard" style="--card-color:#e2231a">
     <svg class="card-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M8 2.5v4M16 2.5v4M3 9.5h18"/><circle cx="8" cy="14" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="14" r="1.2" fill="currentColor" stroke="none"/><circle cx="16" cy="14" r="1.2" fill="currentColor" stroke="none"/></svg>
     <div><div class="t">Agenda</div><div class="s">Compromissos com prioridade e confirmação</div></div>
   </a>
@@ -56,5 +56,20 @@
   </a>
 </div>
 <div class="tagline">PREVENIR <span class="accent">•</span> PROTEGER <span class="accent">•</span> PRESERVAR</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+  const sb = supabase.createClient(
+    'https://ophydiyzvbvilhkmcwuh.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9waHlkaXl6dmJ2aWxoa21jd3VoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyOTg0OTgsImV4cCI6MjEwNTg3NDQ5OH0.roXYCaGC5E8rDQtHNH7vqYj_kqagno30roDNZsByiMc'
+  );
+  sb.auth.getSession().then(async ({ data }) => {
+    if (!data.session) return;
+    const { data: profile } = await sb.from('profiles').select('role').eq('id', data.session.user.id).single();
+    if (profile && profile.role === 'tecnico') {
+      const card = document.getElementById('agendaCard');
+      if (card) card.style.display = 'none';
+    }
+  });
+</script>
 </body>
 </html>
