@@ -390,6 +390,7 @@
     } else {
       const { error } = await sb.from('events').insert(payload);
       if (error) { showMsg(formMsg, 'Erro: ' + error.message); return; }
+      sb.functions.invoke('send-reminders').catch(() => {});
     }
     backdrop.classList.remove('open');
     selectedDate = date;

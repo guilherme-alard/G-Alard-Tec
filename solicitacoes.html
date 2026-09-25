@@ -308,6 +308,7 @@
     });
     sendBtn.disabled = false; sendBtn.textContent = 'Enviar solicitação';
     if (error) { showMsg(formMsg, 'Erro: ' + error.message); return; }
+    sb.functions.invoke('send-reminders').catch(() => {});
     document.getElementById('reqDesc').value = '';
     document.getElementById('reqClient').value = '';
     pendingPhotoBlob = null;
