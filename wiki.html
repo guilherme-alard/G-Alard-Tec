@@ -222,7 +222,7 @@
       <button class="back-btn" id="backList">← Voltar</button>
       <div class="badge">${p.category.toUpperCase()}</div>
       <h1 style="font-size:22px">${p.title}</h1>
-      ${steps.map((s,i) => `<div class="step"><div class="step-num">${i+1}</div><div class="step-body"><p>${s.text}</p></div></div>`).join('')}
+      ${steps.map((s,i) => `<div class="step"><div class="step-num">${i+1}</div><div class="step-body"><p>${s.text}</p>${s.photo_url ? `<img src="${s.photo_url}" loading="lazy" style="max-width:100%;border-radius:8px;display:block;margin-top:6px">` : ''}</div></div>`).join('')}
     `;
     document.getElementById('viewOverlay').classList.add('open');
     document.getElementById('backList').addEventListener('click', () => document.getElementById('viewOverlay').classList.remove('open'));
@@ -231,12 +231,58 @@
   const formOverlay = document.getElementById('formOverlay');
   const stepsContainer = document.getElementById('stepsContainer');
 
+  function compressImage(file, maxWidth = 1280, quality = 0.72) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const scale = Math.min(1, maxWidth / img.width);
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Falha ao processar imagem')), 'image/jpeg', quality);
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
   function addStepBlock() {
     const div = document.createElement('div');
     div.className = 'step-form';
-    div.innerHTML = `<button type="button" class="rm">×</button><label>Passo ${stepsContainer.children.length + 1}</label><textarea placeholder="Descreva este passo..." class="step-text"></textarea>`;
+    div.innerHTML = `<button type="button" class="rm">×</button><label>Passo ${stepsContainer.children.length + 1}</label><textarea placeholder="Descreva este passo..." class="step-text"></textarea>
+      <div class="photo-row" style="display:flex;align-items:center;gap:10px;margin-top:8px">
+        <button type="button" class="photo-btn" style="background:var(--surface);border:1px dashed var(--border);border-radius:8px;padding:9px 14px;color:var(--text-dim);font-size:13px;cursor:pointer;font-family:inherit">Adicionar foto</button>
+        <input type="file" accept="image/*" style="display:none" class="step-photo-input">
+        <img class="step-photo-preview" style="height:40px;border-radius:6px;display:none">
+      </div>`;
     stepsContainer.appendChild(div);
     div.querySelector('.rm').addEventListener('click', () => { div.remove(); renumberSteps(); });
+
+    const photoBtn = div.querySelector('.photo-btn');
+    const photoInput = div.querySelector('.step-photo-input');
+    const preview = div.querySelector('.step-photo-preview');
+    photoBtn.addEventListener('click', () => photoInput.click());
+    photoInput.addEventListener('change', async () => {
+      const file = photoInput.files[0];
+      if (!file) return;
+      photoBtn.textContent = 'Processando...';
+      try {
+        const blob = await compressImage(file);
+        div.dataset.photoBlobUrl = URL.createObjectURL(blob);
+        div._photoBlob = blob;
+        preview.src = div.dataset.photoBlobUrl;
+        preview.style.display = 'block';
+        photoBtn.textContent = `Foto anexada ✓ (${Math.round(blob.size/1024)} KB)`;
+      } catch (err) {
+        photoBtn.textContent = 'Adicionar foto';
+      }
+    });
   }
   function renumberSteps() {
     [...stepsContainer.children].forEach((el,i) => el.querySelector('label').textContent = 'Passo ' + (i+1));
