@@ -151,6 +151,10 @@
       <input id="clClientId" type="number" placeholder="Ex: 1042">
     </div>
     <div class="cl-item">
+      <div class="cl-item-label">Nome do Cliente</div>
+      <input id="clClientName" type="text" placeholder="Ex: Paulo Ferreira">
+    </div>
+    <div class="cl-item">
       <div class="cl-item-label">Modelo</div>
       <input id="clModelo" type="text" placeholder="Ex: JFL Active 20 Ultra">
     </div>
@@ -474,6 +478,7 @@
 
   function resetChecklistForm() {
     document.getElementById('clClientId').value = '';
+    document.getElementById('clClientName').value = '';
     document.getElementById('clModelo').value = '';
     document.querySelectorAll('.toggle-group').forEach(g => {
       delete g.dataset.value;
@@ -496,8 +501,9 @@
 
   document.getElementById('clSave').addEventListener('click', async () => {
     const clientId = document.getElementById('clClientId').value.trim();
+    const clientName = document.getElementById('clClientName').value.trim();
     const clMsg = document.getElementById('clMsg');
-    if (!clientId) { showMsg(clMsg, 'Informe o ID do cliente.'); return; }
+    if (!clientId && !clientName) { showMsg(clMsg, 'Informe ao menos o nome ou o ID do cliente.'); return; }
 
     const g = (field) => document.querySelector(`.toggle-group[data-field="${field}"]`).dataset.value || '—';
     const zones = [...zonesContainer.querySelectorAll('.zone-row')]
@@ -506,6 +512,7 @@
 
     const data = {
       clientId,
+      clientName,
       modelo: document.getElementById('clModelo').value.trim(),
       tipoLocal: g('tipoLocal'),
       fullcam: g('fullcam'),
@@ -530,6 +537,7 @@
     const sn = (b) => b ? 'Sim' : 'Não';
     const zonesText = zones.length ? zones.map(z => `   - Zona ${z.zone || '?'}: ${z.name || '(sem nome)'}`).join('\n') : '   (nenhuma zona listada)';
     const text = `✅ CHECKLIST – NOVA IMPLANTAÇÃO
+Cliente: ${data.clientName || '—'} (ID: ${data.clientId || '—'})
 Modelo: ${data.modelo || '—'}
 Tipo de Local: ${data.tipoLocal}
 
@@ -553,7 +561,7 @@ ${zonesText}
     saveBtn.disabled = true; saveBtn.textContent = 'Salvando...';
     const { error } = await sb.from('diary_entries').insert({
       author_id: currentProfile.id,
-      client_name: clientId,
+      client_name: clientName || clientId,
       text,
       checklist_data: data
     });
