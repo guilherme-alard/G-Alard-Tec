@@ -31,9 +31,32 @@
   .card-icon{flex-shrink:0;color:var(--card-color)}
   .card .t{font-size:16px;font-weight:700;margin-bottom:3px}
   .card .s{font-size:12.5px;color:var(--text-dim)}
-  .verse{margin:0 auto 26px;max-width:340px}
+  .verse{margin:22px auto 28px;max-width:340px}
   .verse .txt{margin:0;font-size:14.5px;line-height:1.6;font-style:italic;color:var(--text)}
   .verse .ref{margin-top:8px;font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+  /* Ajuste para caber tudo em uma tela no celular */
+  body{padding:22px 20px calc(18px + env(safe-area-inset-bottom,0px))}
+  .verse{margin:22px auto 20px;max-width:340px}
+  .wrap{margin:0}
+  .verse .txt{font-size:13.5px;line-height:1.55}
+  .verse .ref{margin-top:6px;font-size:11px}
+  .wrap img{height:52px!important;margin-bottom:8px!important}
+  h1{margin:0 0 18px;font-size:23px}
+  .card{padding:11px 16px;margin-bottom:9px;gap:13px;border-radius:12px}
+  .card-icon{width:24px;height:24px}
+  .card .t{font-size:15px;margin-bottom:1px}
+  .card .s{font-size:12px;line-height:1.35}
+  .tagline{margin-top:auto;padding-top:14px}
+  @media (max-height:720px){
+    body{padding-top:16px}
+    .verse{margin:16px auto 14px}
+    .verse .txt{font-size:12.5px}
+    .wrap img{height:40px!important;margin-bottom:4px!important}
+    h1{font-size:20px;margin-bottom:12px}
+    .card{padding:8px 14px;margin-bottom:7px}
+    .card .t{font-size:14px}
+    .card .s{font-size:11.5px}
+  }
 </style>
 </head>
 <body>
