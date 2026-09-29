@@ -252,7 +252,7 @@
         sub: steps.length + ' passo' + (steps.length !== 1 ? 's' : ''),
         hay: norm(p.title + ' ' + p.category + ' ' + steps.map(s => s.text).join(' ')) };
     });
-    const g = GUIAS.map(x => ({ kind: 'g', key: 'g' + x.n, cat: CATS[x.c], title: x.t, sub: x.s, n: x.n,
+    const g = GUIAS.map(x => ({ kind: 'g', key: 'g' + x.n, cat: CATS[x.c], title: x.t, sub: x.s, n: x.n, l: x.l, lbl: x.l || pad(x.n),
       hay: norm(x.t + ' ' + x.s + ' ' + CATS[x.c]) + ' ' + x.k }));
     return [...own, ...g];
   }
@@ -286,7 +286,7 @@
         html += `<div class="group-title"><span>${esc(i.cat)}</span><span>${n}</span></div>`; last = i.cat;
       }
       html += `<button class="card" data-key="${i.key}">
-        <div class="card-num ${i.kind === 'p' ? 'own' : ''}">${i.kind === 'g' ? pad(i.n) : '★'}</div>
+        <div class="card-num ${i.kind === 'p' ? 'own' : ''}">${i.kind === 'g' ? i.lbl : '★'}</div>
         <div class="card-body">
           ${grouped ? '' : `<div class="card-cat">${esc(i.cat)}</div>`}
           <div class="card-title">${esc(i.title)}</div>
@@ -310,7 +310,7 @@
     let body;
     if (it.kind === 'g') {
       viewContent.classList.add('wide');
-      body = `<div class="badge">GUIA ${pad(it.n)} · ${esc(it.cat.toUpperCase())}</div>
+      body = `<div class="badge">${it.l ? 'DIAGNÓSTICO ' + it.l.slice(1) : 'GUIA ' + pad(it.n)} · ${esc(it.cat.replace(/^Diagnóstico · /, '').toUpperCase())}</div>
         <h1>${esc(it.title)}</h1><p class="sub">${esc(it.sub)}</p>
         <div class="sheet" id="sheet"><img src="guias/guias/${pad(it.n)}.webp" alt="Guia visual: ${esc(it.title)}" width="1000" height="1413"></div>
         <div class="tools"><button class="back-btn" id="zoomBtn">Ampliar imagem</button></div>`;
