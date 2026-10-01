@@ -566,7 +566,9 @@
     const rows = []; let currentClient = '';
     text.split(/\r?\n/).forEach(line => {
       const l = line.replace(/^[\s•\-*–—\d.)]+(?=\S)/, m => /\d{4,}/.test(m) ? m : '').trim();
-      if (!l) { return; }
+      if (!l || /^\|?[\s|:-]*$/.test(l)) { return; }            // linha vazia ou separador de tabela
+      const isTable = l.includes('|');
+      if (isTable && /^\|?\s*\|/.test(l.replace(/^\|/, '|'))) currentClient = '';  // célula de cliente vazia: não herda
       const parts = l.split(/\s+[-–—]\s+|\s*[;|\t]\s*|\s*:\s+/).map(s => s.trim()).filter(Boolean);
       const serialPart = parts.find(p => looksSerial(p.replace(/^(S\/?N|SN|SERIAL|NS)\s*[:#]?\s*/i, '')));
       if (!serialPart) { currentClient = l.replace(/[:\-–—]+$/, '').trim(); return; }
